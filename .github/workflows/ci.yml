@@ -36,3 +36,14 @@ jobs:
       - uses: raven-actions/actionlint@v2
         with:
           flags: "-verbose"
+
+  ci:
+    name: CI
+    needs: [lint-action, lint-scripts, lint-workflows]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          for result in "${{ needs.lint-action.result }}" "${{ needs.lint-scripts.result }}" "${{ needs.lint-workflows.result }}"; do
+            [ "$result" = "success" ] || exit 1
+          done
