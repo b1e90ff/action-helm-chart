@@ -24,4 +24,5 @@ jobs:
     steps:
       - uses: b1e90ff/action-semantic-release@v1
         with:
-          github-token: ${{ github.token }}
+          github-token: ${{ secrets.RELEASE_TOKEN }}
+          push-token: ${{ secrets.RELEASE_TOKEN }}
