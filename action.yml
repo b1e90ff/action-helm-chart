@@ -1,0 +1,209 @@
+name: "Helm OCI Publisher"
+description: "Composite action for Helm chart lifecycle management — discover, lint, and publish charts to any OCI-compatible registry."
+author: "b1e90ff"
+branding:
+  icon: "box"
+  color: "orange"
+
+inputs:
+  github-token:
+    description: "Token used for OCI registry login and API access"
+    required: true
+
+  mode:
+    description: "Execution mode: discover (scan for charts), validate (lint + template), release (full publish pipeline)"
+    required: false
+    default: "validate"
+
+  chart-directory:
+    description: "Path to a Helm chart directory (mandatory for validate and release modes)"
+    required: false
+    default: ""
+
+  chart-pattern:
+    description: "Glob pattern for chart discovery (mandatory for discover mode, e.g. 'charts/*')"
+    required: false
+    default: ""
+
+  oci-registry:
+    description: "Hostname of the OCI-compatible container registry"
+    required: false
+    default: "ghcr.io"
+
+  registry-owner:
+    description: "Account or organization that owns the registry namespace (defaults to repository owner)"
+    required: false
+    default: ""
+
+  charts-repo-name:
+    description: "Name of the charts repository within the registry namespace"
+    required: false
+    default: "charts"
+
+  source-repo:
+    description: "URL embedded as OCI source annotation (defaults to the current repository)"
+    required: false
+    default: ""
+
+  helm-version:
+    description: "Helm CLI version to install"
+    required: false
+    default: "v3.17.3"
+
+  skip-existing:
+    description: "When enabled, skips publishing if the chart version is already present in the registry"
+    required: false
+    default: "true"
+
+  lint-strict:
+    description: "Run helm lint in strict mode"
+    required: false
+    default: "true"
+
+outputs:
+  charts_matrix:
+    description: "JSON array of discovered chart paths (for GitHub Actions matrix strategy)"
+    value: ${{ steps.discover.outputs.charts_matrix }}
+
+  charts_count:
+    description: "Total number of charts found"
+    value: ${{ steps.discover.outputs.charts_count }}
+
+  chart_name:
+    description: "Name field from Chart.yaml"
+    value: ${{ steps.metadata.outputs.name }}
+
+  chart_version:
+    description: "Version field from Chart.yaml"
+    value: ${{ steps.metadata.outputs.version }}
+
+  chart_app_version:
+    description: "appVersion field from Chart.yaml"
+    value: ${{ steps.metadata.outputs.app_version }}
+
+  tgz_path:
+    description: "Filesystem path to the packaged .tgz archive"
+    value: ${{ steps.package.outputs.tgz_path }}
+
+  skipped:
+    description: "Set to true when publishing was skipped because the version already exists"
+    value: ${{ steps.check_exists.outputs.skip_processing }}
+
+  released:
+    description: "Set to true when the chart was successfully published"
+    value: ${{ steps.result.outputs.released }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Check inputs
+      shell: bash
+      env:
+        INPUT_MODE: ${{ inputs.mode }}
+        INPUT_CHART_DIRECTORY: ${{ inputs.chart-directory }}
+        INPUT_CHART_PATTERN: ${{ inputs.chart-pattern }}
+      run: "${GITHUB_ACTION_PATH}/scripts/validate-inputs.sh"
+
+    - name: Install Helm
+      if: inputs.mode != 'discover'
+      shell: bash
+      env:
+        HELM_VERSION: ${{ inputs.helm-version }}
+        OCI_REGISTRY: ${{ inputs.oci-registry }}
+        REGISTRY_OWNER: ${{ inputs.registry-owner || github.repository_owner }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: "${GITHUB_ACTION_PATH}/scripts/setup-helm.sh"
+
+    - name: Scan for charts
+      id: discover
+      shell: bash
+      env:
+        INPUT_MODE: ${{ inputs.mode }}
+        INPUT_CHART_DIRECTORY: ${{ inputs.chart-directory }}
+        INPUT_CHART_PATTERN: ${{ inputs.chart-pattern }}
+      run: "${GITHUB_ACTION_PATH}/scripts/discover-charts.sh"
+
+    - name: Read chart metadata
+      id: metadata
+      if: inputs.mode != 'discover' && steps.discover.outputs.chart_found == 'true'
+      shell: bash
+      env:
+        CHART_PATH: ${{ github.workspace }}/${{ inputs.chart-directory }}
+      run: "${GITHUB_ACTION_PATH}/scripts/get-metadata.sh"
+
+    - name: Lint chart
+      if: inputs.mode != 'discover' && steps.discover.outputs.chart_found == 'true'
+      shell: bash
+      env:
+        CHART_PATH: ${{ github.workspace }}/${{ inputs.chart-directory }}
+        INPUT_LINT_STRICT: ${{ inputs.lint-strict }}
+      run: "${GITHUB_ACTION_PATH}/scripts/lint-chart.sh"
+
+    - name: Render templates
+      if: inputs.mode != 'discover' && steps.discover.outputs.chart_found == 'true'
+      shell: bash
+      env:
+        CHART_PATH: ${{ github.workspace }}/${{ inputs.chart-directory }}
+        CHART_NAME: ${{ steps.metadata.outputs.name }}
+      run: "${GITHUB_ACTION_PATH}/scripts/template-chart.sh"
+
+    - name: Check registry for existing version
+      id: check_exists
+      if: inputs.mode == 'release' && steps.discover.outputs.chart_found == 'true' && inputs.skip-existing == 'true'
+      shell: bash
+      env:
+        CHART_NAME: ${{ steps.metadata.outputs.name }}
+        CHART_VERSION: ${{ steps.metadata.outputs.version }}
+        OCI_REGISTRY: ${{ inputs.oci-registry }}
+        REGISTRY_OWNER: ${{ inputs.registry-owner || github.repository_owner }}
+        CHARTS_REPO_NAME: ${{ inputs.charts-repo-name }}
+      run: "${GITHUB_ACTION_PATH}/scripts/check-chart-exists.sh"
+
+    - name: Resolve dependencies
+      if: inputs.mode == 'release' && steps.discover.outputs.chart_found == 'true' && (inputs.skip-existing != 'true' || steps.check_exists.outputs.skip_processing != 'true')
+      shell: bash
+      env:
+        CHART_PATH: ${{ github.workspace }}/${{ inputs.chart-directory }}
+      run: "${GITHUB_ACTION_PATH}/scripts/update-dependencies.sh"
+
+    - name: Inject OCI annotations
+      if: inputs.mode == 'release' && steps.discover.outputs.chart_found == 'true' && (inputs.skip-existing != 'true' || steps.check_exists.outputs.skip_processing != 'true')
+      shell: bash
+      env:
+        CHART_PATH: ${{ github.workspace }}/${{ inputs.chart-directory }}
+        SOURCE_REPO: ${{ inputs.source-repo || format('{0}/{1}', github.server_url, github.repository) }}
+      run: "${GITHUB_ACTION_PATH}/scripts/add-annotations.sh"
+
+    - name: Package chart
+      id: package
+      if: inputs.mode == 'release' && steps.discover.outputs.chart_found == 'true' && (inputs.skip-existing != 'true' || steps.check_exists.outputs.skip_processing != 'true')
+      shell: bash
+      env:
+        CHART_PATH: ${{ github.workspace }}/${{ inputs.chart-directory }}
+        CHART_NAME: ${{ steps.metadata.outputs.name }}
+        CHART_VERSION: ${{ steps.metadata.outputs.version }}
+        DESTINATION_DIR: ${{ runner.temp }}/helm-packages
+      run: "${GITHUB_ACTION_PATH}/scripts/package-chart.sh"
+
+    - name: Publish to registry
+      id: push
+      if: inputs.mode == 'release' && steps.discover.outputs.chart_found == 'true' && (inputs.skip-existing != 'true' || steps.check_exists.outputs.skip_processing != 'true')
+      shell: bash
+      env:
+        CHART_NAME: ${{ steps.metadata.outputs.name }}
+        CHART_VERSION: ${{ steps.metadata.outputs.version }}
+        TGZ_PATH: ${{ steps.package.outputs.tgz_path }}
+        OCI_REGISTRY: ${{ inputs.oci-registry }}
+        REGISTRY_OWNER: ${{ inputs.registry-owner || github.repository_owner }}
+        CHARTS_REPO_NAME: ${{ inputs.charts-repo-name }}
+      run: "${GITHUB_ACTION_PATH}/scripts/push-chart.sh"
+
+    - name: Set outputs
+      id: result
+      if: inputs.mode != 'discover'
+      shell: bash
+      env:
+        INPUT_MODE: ${{ inputs.mode }}
+        CHART_FOUND: ${{ steps.discover.outputs.chart_found }}
+        SKIP_PROCESSING: ${{ steps.check_exists.outputs.skip_processing }}
+      run: "${GITHUB_ACTION_PATH}/scripts/output-result.sh"
