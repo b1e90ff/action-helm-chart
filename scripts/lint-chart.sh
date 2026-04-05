@@ -6,7 +6,7 @@ set -euo pipefail
 echo "::group::Helm Lint"
 
 if grep -q "^dependencies:" "${CHART_PATH}/Chart.yaml" 2>/dev/null; then
-  helm dependency build "${CHART_PATH}" --skip-refresh 2>/dev/null || true
+  helm dependency build "${CHART_PATH}" || true
 fi
 
 args=("${CHART_PATH}")
