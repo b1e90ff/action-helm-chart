@@ -6,7 +6,7 @@ set -euo pipefail
 echo "::group::Dependencies"
 
 if grep -q "^dependencies:" "${CHART_PATH}/Chart.yaml" 2>/dev/null; then
-  helm dependency build "${CHART_PATH}" || { echo "::error::Dependency build failed"; echo "::endgroup::"; exit 1; }
+  helm dependency update "${CHART_PATH}" || { echo "::error::Dependency update failed"; echo "::endgroup::"; exit 1; }
 else
   echo "No dependencies declared"
 fi
