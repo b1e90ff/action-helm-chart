@@ -22,7 +22,14 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     steps:
+      - name: Generate App Token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
       - uses: b1e90ff/action-semantic-release@v1
         with:
-          github-token: ${{ secrets.RELEASE_TOKEN }}
-          push-token: ${{ secrets.RELEASE_TOKEN }}
+          github-token: ${{ steps.app-token.outputs.token }}
+          push-token: ${{ steps.app-token.outputs.token }}
