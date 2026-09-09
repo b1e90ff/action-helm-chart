@@ -9,7 +9,6 @@ targets=()
 
 if [[ -n "${INPUT_CHARTS_OCI_URL//[[:space:]]/}" ]]; then
   while IFS= read -r line; do
-    line="${line//$'\r'/}"
     line="$(printf '%s' "${line}" | tr -d '[:space:]')"
     [[ -z "${line}" ]] && continue
     if [[ "${line}" != oci://*/* ]]; then
