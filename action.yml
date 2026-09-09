@@ -76,6 +76,11 @@ inputs:
     required: false
     default: "true"
 
+  validate-chart:
+    description: "Lint and render the chart. Turn off for charts that only render with values supplied at deploy time."
+    required: false
+    default: "true"
+
 outputs:
   charts_matrix:
     description: "JSON array of discovered chart paths (for GitHub Actions matrix strategy)"
@@ -176,7 +181,7 @@ runs:
       run: "${GITHUB_ACTION_PATH}/scripts/get-metadata.sh"
 
     - name: Lint chart
-      if: steps.discover.outputs.validate == 'true'
+      if: steps.discover.outputs.validate == 'true' && inputs.validate-chart == 'true'
       shell: bash
       env:
         CHART_PATH: ${{ github.workspace }}/${{ inputs.chart-directory }}
@@ -184,7 +189,7 @@ runs:
       run: "${GITHUB_ACTION_PATH}/scripts/lint-chart.sh"
 
     - name: Render templates
-      if: steps.discover.outputs.validate == 'true'
+      if: steps.discover.outputs.validate == 'true' && inputs.validate-chart == 'true'
       shell: bash
       env:
         CHART_PATH: ${{ github.workspace }}/${{ inputs.chart-directory }}

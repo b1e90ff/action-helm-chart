@@ -85,6 +85,7 @@ jobs:
 | `helm-version` | no | `v3.17.3` | Helm CLI version |
 | `skip-existing` | no | `true` | Skip publish when version exists |
 | `lint-strict` | no | `true` | Strict lint mode |
+| `validate-chart` | no | `true` | Lint and render the chart; turn off for charts that only render with deploy-time values |
 
 ## Outputs
 
