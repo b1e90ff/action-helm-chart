@@ -71,13 +71,15 @@ jobs:
 
 | Name | Required | Default | Description |
 |------|----------|---------|-------------|
-| `github-token` | **yes** | — | Token for OCI registry login and API access |
+| `github-token` | no | — | Token for registry login; not needed when every target uses a credential helper |
 | `mode` | no | `validate` | `discover`, `validate`, or `release` |
 | `chart-directory` | no | — | Chart path (validate/release) |
 | `chart-pattern` | no | — | Glob for chart scanning (discover) |
-| `oci-registry` | no | `ghcr.io` | OCI registry hostname |
-| `registry-owner` | no | repo owner | Registry namespace owner |
-| `charts-repo-name` | no | `charts` | Repository name within the namespace |
+| `charts-oci-url` | no | — | Target repository as a full `oci://` URL, one per line |
+| `registry-username` | no | repo owner | User name for registry login |
+| `oci-registry` | no | `ghcr.io` | OCI registry hostname; superseded by `charts-oci-url` |
+| `registry-owner` | no | repo owner | Registry namespace owner; superseded by `charts-oci-url` |
+| `charts-repo-name` | no | `charts` | Repository name within the namespace; superseded by `charts-oci-url` |
 | `source-repo` | no | current repo | URL for OCI source annotation |
 | `helm-version` | no | `v3.17.3` | Helm CLI version |
 | `skip-existing` | no | `true` | Skip publish when version exists |
@@ -93,7 +95,7 @@ jobs:
 | `chart_version` | Version from Chart.yaml |
 | `chart_app_version` | appVersion from Chart.yaml |
 | `tgz_path` | Path to packaged .tgz |
-| `skipped` | `true` if version already existed |
+| `skipped` | `true` if the version already existed in every target |
 | `released` | `true` if chart was published |
 
 ## How Modes Work
@@ -111,6 +113,25 @@ permissions:
   contents: read
   packages: write
 ```
+
+`packages: write` covers `ghcr.io`. A `*.pkg.dev` target authenticates through the gcloud
+credential helper instead, so the calling workflow has to provide it and `github-token`
+becomes optional:
+
+```yaml
+- uses: google-github-actions/auth@v3
+  with:
+    credentials_json: ${{ secrets.GCP_SA_KEY }}
+- uses: google-github-actions/setup-gcloud@v3
+- uses: b1e90ff/action-helm-chart@v1
+  with:
+    mode: release
+    chart-directory: helm
+    charts-oci-url: oci://REGION-docker.pkg.dev/PROJECT/REPO/charts
+```
+
+Listing both hosts publishes to both, and then `github-token` is required again for the
+`ghcr.io` half.
 
 ## Glob Pattern Reference
 

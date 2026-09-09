@@ -6,6 +6,16 @@ set -euo pipefail
 # Writes multiple key=value pairs to GITHUB_OUTPUT
 emit() { for kv in "$@"; do echo "${kv}" >> "${GITHUB_OUTPUT}"; done; }
 
+# Derived here rather than in action.yml so every later step carries a single-clause condition
+emit_gates() {
+  local validate="false" release="false"
+  if [[ "$1" == "true" && "${INPUT_MODE}" != "discover" ]]; then
+    validate="true"
+    [[ "${INPUT_MODE}" == "release" ]] && release="true"
+  fi
+  emit "validate=${validate}" "release=${release}"
+}
+
 # Builds a JSON string array from positional args
 to_json_array() {
   local out="["
@@ -44,6 +54,7 @@ if [[ "${INPUT_MODE}" == "discover" ]]; then
     echo "Found ${count} chart(s)"
   fi
 
+  emit_gates false
   echo "::endgroup::"
   exit 0
 fi
@@ -51,7 +62,9 @@ fi
 # Single-chart mode (validate / release)
 if [[ -d "${INPUT_CHART_DIRECTORY}" && -f "${INPUT_CHART_DIRECTORY}/Chart.yaml" ]]; then
   emit "chart_found=true" "charts_matrix=$(to_json_array "${INPUT_CHART_DIRECTORY}")" "charts_count=1"
+  emit_gates true
 else
   echo "::warning::No valid chart at '${INPUT_CHART_DIRECTORY}'"
   emit "chart_found=false" "charts_matrix=[]" "charts_count=0"
+  emit_gates false
 fi

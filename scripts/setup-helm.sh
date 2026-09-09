@@ -2,9 +2,6 @@
 set -euo pipefail
 
 : "${HELM_VERSION:?HELM_VERSION is required}"
-: "${OCI_REGISTRY:?OCI_REGISTRY is required}"
-: "${REGISTRY_OWNER:?REGISTRY_OWNER is required}"
-: "${GITHUB_TOKEN:?GITHUB_TOKEN is required}"
 
 echo "::group::Helm Setup"
 
@@ -18,11 +15,4 @@ else
   echo "Helm ${HELM_VERSION} already present"
 fi
 
-echo "::endgroup::"
-
-echo "::group::Registry Login"
-echo "${GITHUB_TOKEN}" | helm registry login "${OCI_REGISTRY}" \
-  --username "${REGISTRY_OWNER}" \
-  --password-stdin
-echo "Authenticated with ${OCI_REGISTRY}"
 echo "::endgroup::"
