@@ -77,7 +77,7 @@ jobs:
 | `chart-pattern` | no | — | Glob for chart scanning (discover) |
 | `charts-oci-url` | no | — | Target repository as a full `oci://` URL, one per line |
 | `registry-username` | no | repo owner | User name for registry login |
-| `gcp-credentials-json` | no | — | Service account key, read only when a `*.pkg.dev` host is involved |
+| `gcp-credentials-json` | no | — | Service account key; used when a `*.pkg.dev` host is involved, ignored otherwise |
 | `oci-registry` | no | `ghcr.io` | OCI registry hostname; superseded by `charts-oci-url` |
 | `registry-owner` | no | repo owner | Registry namespace owner; superseded by `charts-oci-url` |
 | `charts-repo-name` | no | `charts` | Repository name within the namespace; superseded by `charts-oci-url` |
