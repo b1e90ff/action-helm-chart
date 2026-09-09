@@ -3,12 +3,30 @@ set -euo pipefail
 
 : "${CHARTS_OCI_URLS:?CHARTS_OCI_URLS is required}"
 
+host_of() {
+  local rest="${1#oci://}"
+  printf '%s\n' "${rest%%/*}"
+}
+
+hosts=()
+for target in ${CHARTS_OCI_URLS}; do
+  hosts+=("$(host_of "${target}")")
+done
+
+# helm dependency update pulls from the repository the Chart.yaml names, which need not be
+# one of the publish targets.
+if [ -n "${CHART_PATH:-}" ] && [ -f "${CHART_PATH}/Chart.yaml" ]; then
+  while IFS= read -r dep; do
+    [ -z "${dep}" ] && continue
+    hosts+=("$(host_of "${dep}")")
+  done < <(grep -E '^[[:space:]]*repository:' "${CHART_PATH}/Chart.yaml" \
+    | grep -oE 'oci://[^"'"'"' ]+' || true)
+fi
+
 echo "::group::Registry Login"
 
 declare -A seen=()
-for target in ${CHARTS_OCI_URLS}; do
-  host="${target#oci://}"
-  host="${host%%/*}"
+for host in "${hosts[@]}"; do
   [[ -n "${seen[${host}]:-}" ]] && continue
   seen["${host}"]=1
 

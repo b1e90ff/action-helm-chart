@@ -114,6 +114,10 @@ permissions:
   packages: write
 ```
 
+`validate` needs registry credentials too: linting and rendering a chart with dependencies
+pulls the subcharts first. The login therefore covers both the publish targets and every
+`oci://` repository the `Chart.yaml` depends on, which need not be the same host.
+
 `packages: write` covers `ghcr.io`. A `*.pkg.dev` target authenticates through the gcloud
 credential helper instead, so the calling workflow has to provide it and `github-token`
 becomes optional:
