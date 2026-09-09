@@ -48,7 +48,7 @@ if [ -n "${CHART_PATH:-}" ] && [ -f "${CHART_PATH}/Chart.yaml" ]; then
   while IFS= read -r dep; do
     [ -z "${dep}" ] && continue
     hosts+=("$(host_of "${dep}")")
-  done < <(grep -E '^[[:space:]]*repository:' "${CHART_PATH}/Chart.yaml" \
+  done < <(tr -d '\r' < "${CHART_PATH}/Chart.yaml" | grep -E '^[[:space:]]*repository:' \
     | grep -oE 'oci://[^"'"'"' ]+' || true)
 fi
 

@@ -10,7 +10,7 @@ echo "::group::Chart Metadata"
 
 # Simple YAML field extractor (top-level scalar fields only)
 field() {
-  grep -m1 -E "^${1}:" "${chart_yaml}" | sed "s/^${1}:[[:space:]]*//" | tr -d "\"'" || echo ""
+  grep -m1 -E "^${1}:" "${chart_yaml}" | sed "s/^${1}:[[:space:]]*//" | tr -d '\r' | tr -d "\"'" || echo ""
 }
 
 name=$(field name)
