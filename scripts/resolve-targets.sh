@@ -5,6 +5,11 @@ set -euo pipefail
 
 INPUT_CHARTS_OCI_URL="${INPUT_CHARTS_OCI_URL:-}"
 
+host_of() {
+  local rest="${1#oci://}"
+  printf '%s\n' "${rest%%/*}"
+}
+
 targets=()
 
 if [[ -n "${INPUT_CHARTS_OCI_URL//[[:space:]]/}" ]]; then
@@ -24,16 +29,46 @@ else
   targets+=("oci://${OCI_REGISTRY}/${REGISTRY_OWNER}/${CHARTS_REPO_NAME}")
 fi
 
-declare -A seen=()
+declare -A target_seen=()
 unique=()
 for target in "${targets[@]}"; do
-  [[ -n "${seen[${target}]:-}" ]] && continue
-  seen["${target}"]=1
+  [[ -n "${target_seen[${target}]:-}" ]] && continue
+  target_seen["${target}"]=1
   unique+=("${target}")
 done
 
-echo "::group::Registry Targets"
-printf '%s\n' "${unique[@]}"
+hosts=()
+for target in "${unique[@]}"; do
+  hosts+=("$(host_of "${target}")")
+done
+
+# helm dependency update pulls from the repository the Chart.yaml names, which need not be
+# one of the publish targets.
+if [ -n "${CHART_PATH:-}" ] && [ -f "${CHART_PATH}/Chart.yaml" ]; then
+  while IFS= read -r dep; do
+    [ -z "${dep}" ] && continue
+    hosts+=("$(host_of "${dep}")")
+  done < <(grep -E '^[[:space:]]*repository:' "${CHART_PATH}/Chart.yaml" \
+    | grep -oE 'oci://[^"'"'"' ]+' || true)
+fi
+
+declare -A host_seen=()
+unique_hosts=()
+needs_gcp=false
+for host in "${hosts[@]}"; do
+  [[ -n "${host_seen[${host}]:-}" ]] && continue
+  host_seen["${host}"]=1
+  unique_hosts+=("${host}")
+  [[ "${host}" == *.pkg.dev ]] && needs_gcp=true
+done
+
+echo "::group::Registries"
+echo "Publish targets: ${unique[*]}"
+echo "Hosts to authenticate: ${unique_hosts[*]}"
 echo "::endgroup::"
 
-echo "urls=${unique[*]}" >> "${GITHUB_OUTPUT}"
+{
+  echo "urls=${unique[*]}"
+  echo "hosts=${unique_hosts[*]}"
+  echo "needs_gcp=${needs_gcp}"
+} >> "${GITHUB_OUTPUT}"
