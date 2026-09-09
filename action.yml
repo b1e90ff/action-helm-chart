@@ -143,10 +143,11 @@ runs:
       run: "${GITHUB_ACTION_PATH}/scripts/setup-helm.sh"
 
     - name: Log in to registries
-      if: steps.discover.outputs.release == 'true'
+      if: steps.discover.outputs.validate == 'true'
       shell: bash
       env:
         CHARTS_OCI_URLS: ${{ steps.targets.outputs.urls }}
+        CHART_PATH: ${{ github.workspace }}/${{ inputs.chart-directory }}
         REGISTRY_USERNAME: ${{ inputs.registry-username || github.repository_owner }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
       run: "${GITHUB_ACTION_PATH}/scripts/registry-login.sh"

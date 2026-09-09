@@ -7,7 +7,8 @@ set -euo pipefail
 echo "::group::Helm Template"
 
 if grep -q "^dependencies:" "${CHART_PATH}/Chart.yaml" 2>/dev/null; then
-  helm dependency update "${CHART_PATH}" 2>/dev/null || true
+  helm dependency update "${CHART_PATH}" \
+    || { echo "::error::Could not resolve the chart dependencies"; echo "::endgroup::"; exit 1; }
 fi
 
 HAS_FAILURE=0

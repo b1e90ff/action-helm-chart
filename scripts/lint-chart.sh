@@ -6,7 +6,9 @@ set -euo pipefail
 echo "::group::Helm Lint"
 
 if grep -q "^dependencies:" "${CHART_PATH}/Chart.yaml" 2>/dev/null; then
-  helm dependency update "${CHART_PATH}" || true
+  # Swallowed, this surfaces as "missing in charts/ directory" and blames the chart.
+  helm dependency update "${CHART_PATH}" \
+    || { echo "::error::Could not resolve the chart dependencies"; echo "::endgroup::"; exit 1; }
 fi
 
 args=("${CHART_PATH}")

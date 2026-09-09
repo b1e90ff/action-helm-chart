@@ -114,9 +114,9 @@ permissions:
   packages: write
 ```
 
-Only `release` mode talks to a registry, so a `discover` or `validate` run needs no registry
-credentials. `validate` still resolves and checks the target URLs, so a malformed one fails
-in the pull request rather than at release time.
+`validate` needs registry credentials too: linting and rendering a chart with dependencies
+pulls the subcharts first. The login therefore covers both the publish targets and every
+`oci://` repository the `Chart.yaml` depends on, which need not be the same host.
 
 `packages: write` covers `ghcr.io`. A `*.pkg.dev` target authenticates through the gcloud
 credential helper instead, so the calling workflow has to provide it and `github-token`
