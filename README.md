@@ -7,7 +7,7 @@ Composite GitHub Action that handles the full Helm chart lifecycle — from disc
 This action operates in three distinct modes that can be combined in a pipeline:
 
 1. **discover** — scans the repository for charts matching a glob pattern and outputs a matrix
-2. **validate** — runs `helm lint` (strict) and `helm template` against a chart
+2. **validate** — runs `helm lint` (strict) and `helm template` against a chart, unless `validate-chart` is off
 3. **release** — validates, packages, annotates, and pushes a chart to an OCI registry
 
 ## Quick Start
@@ -107,6 +107,8 @@ jobs:
 | `discover` | Glob scan, build JSON matrix | `chart-pattern` |
 | `validate` | Lint (strict), template render | `chart-directory` |
 | `release` | Lint, template, check registry, resolve deps, annotate, package, push | `chart-directory` |
+
+Linting and rendering are skipped in both modes when `validate-chart` is `false`.
 
 ## Workflow Permissions
 
