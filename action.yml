@@ -126,7 +126,7 @@ runs:
 
     - name: Resolve registry targets
       id: targets
-      if: steps.discover.outputs.validate == 'true'
+      if: steps.discover.outputs.release == 'true'
       shell: bash
       env:
         INPUT_CHARTS_OCI_URL: ${{ inputs.charts-oci-url }}
@@ -143,7 +143,7 @@ runs:
       run: "${GITHUB_ACTION_PATH}/scripts/setup-helm.sh"
 
     - name: Log in to registries
-      if: steps.discover.outputs.validate == 'true'
+      if: steps.discover.outputs.release == 'true'
       shell: bash
       env:
         CHARTS_OCI_URLS: ${{ steps.targets.outputs.urls }}
