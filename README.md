@@ -114,6 +114,25 @@ permissions:
   packages: write
 ```
 
+`packages: write` covers `ghcr.io`. A `*.pkg.dev` target authenticates through the gcloud
+credential helper instead, so the calling workflow has to provide it and `github-token`
+becomes optional:
+
+```yaml
+- uses: google-github-actions/auth@v3
+  with:
+    credentials_json: ${{ secrets.GCP_SA_KEY }}
+- uses: google-github-actions/setup-gcloud@v3
+- uses: b1e90ff/action-helm-chart@v1
+  with:
+    mode: release
+    chart-directory: helm
+    charts-oci-url: oci://REGION-docker.pkg.dev/PROJECT/REPO/charts
+```
+
+Listing both hosts publishes to both, and then `github-token` is required again for the
+`ghcr.io` half.
+
 ## Glob Pattern Reference
 
 | Pattern | Example Matches |
