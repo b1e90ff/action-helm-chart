@@ -126,7 +126,7 @@ runs:
 
     - name: Resolve registry targets
       id: targets
-      if: steps.discover.outputs.release == 'true'
+      if: steps.discover.outputs.validate == 'true'
       shell: bash
       env:
         INPUT_CHARTS_OCI_URL: ${{ inputs.charts-oci-url }}

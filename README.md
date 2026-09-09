@@ -114,8 +114,9 @@ permissions:
   packages: write
 ```
 
-Only `release` mode talks to a registry. A `discover` or `validate` run needs no registry
-credentials at all.
+Only `release` mode talks to a registry, so a `discover` or `validate` run needs no registry
+credentials. `validate` still resolves and checks the target URLs, so a malformed one fails
+in the pull request rather than at release time.
 
 `packages: write` covers `ghcr.io`. A `*.pkg.dev` target authenticates through the gcloud
 credential helper instead, so the calling workflow has to provide it and `github-token`
