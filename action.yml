@@ -36,6 +36,11 @@ inputs:
     required: false
     default: ""
 
+  gcp-credentials-json:
+    description: "Service account key for Google Cloud. Only used when a target or chart dependency lives on *.pkg.dev."
+    required: false
+    default: ""
+
   oci-registry:
     description: "Hostname of the OCI-compatible container registry. Superseded by charts-oci-url."
     required: false
@@ -133,6 +138,7 @@ runs:
         OCI_REGISTRY: ${{ inputs.oci-registry }}
         REGISTRY_OWNER: ${{ inputs.registry-owner || github.repository_owner }}
         CHARTS_REPO_NAME: ${{ inputs.charts-repo-name }}
+        CHART_PATH: ${{ github.workspace }}/${{ inputs.chart-directory }}
       run: "${GITHUB_ACTION_PATH}/scripts/resolve-targets.sh"
 
     - name: Install Helm
@@ -142,12 +148,21 @@ runs:
         HELM_VERSION: ${{ inputs.helm-version }}
       run: "${GITHUB_ACTION_PATH}/scripts/setup-helm.sh"
 
+    - name: Authenticate with Google Cloud
+      if: steps.discover.outputs.validate == 'true' && steps.targets.outputs.needs_gcp == 'true' && inputs.gcp-credentials-json != ''
+      uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+      with:
+        credentials_json: ${{ inputs.gcp-credentials-json }}
+
+    - name: Set up gcloud
+      if: steps.discover.outputs.validate == 'true' && steps.targets.outputs.needs_gcp == 'true' && inputs.gcp-credentials-json != ''
+      uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
+
     - name: Log in to registries
       if: steps.discover.outputs.validate == 'true'
       shell: bash
       env:
-        CHARTS_OCI_URLS: ${{ steps.targets.outputs.urls }}
-        CHART_PATH: ${{ github.workspace }}/${{ inputs.chart-directory }}
+        REGISTRY_HOSTS: ${{ steps.targets.outputs.hosts }}
         REGISTRY_USERNAME: ${{ inputs.registry-username || github.repository_owner }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
       run: "${GITHUB_ACTION_PATH}/scripts/registry-login.sh"

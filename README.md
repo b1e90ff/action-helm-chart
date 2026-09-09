@@ -77,6 +77,7 @@ jobs:
 | `chart-pattern` | no | — | Glob for chart scanning (discover) |
 | `charts-oci-url` | no | — | Target repository as a full `oci://` URL, one per line |
 | `registry-username` | no | repo owner | User name for registry login |
+| `gcp-credentials-json` | no | — | Service account key, read only when a `*.pkg.dev` host is involved |
 | `oci-registry` | no | `ghcr.io` | OCI registry hostname; superseded by `charts-oci-url` |
 | `registry-owner` | no | repo owner | Registry namespace owner; superseded by `charts-oci-url` |
 | `charts-repo-name` | no | `charts` | Repository name within the namespace; superseded by `charts-oci-url` |
@@ -118,24 +119,21 @@ permissions:
 pulls the subcharts first. The login therefore covers both the publish targets and every
 `oci://` repository the `Chart.yaml` depends on, which need not be the same host.
 
-`packages: write` covers `ghcr.io`. A `*.pkg.dev` target authenticates through the gcloud
-credential helper instead, so the calling workflow has to provide it and `github-token`
-becomes optional:
+`packages: write` covers `ghcr.io`. A `*.pkg.dev` host authenticates through the gcloud
+credential helper, for which the action needs a key:
 
 ```yaml
-- uses: google-github-actions/auth@v3
-  with:
-    credentials_json: ${{ secrets.GCP_SA_KEY }}
-- uses: google-github-actions/setup-gcloud@v3
 - uses: b1e90ff/action-helm-chart@v1
   with:
     mode: release
     chart-directory: helm
     charts-oci-url: oci://REGION-docker.pkg.dev/PROJECT/REPO/charts
+    gcp-credentials-json: ${{ secrets.GCP_SA_KEY }}
 ```
 
-Listing both hosts publishes to both, and then `github-token` is required again for the
-`ghcr.io` half.
+The key is read only when a publish target or a chart dependency actually lives on
+`*.pkg.dev`, so a repository that stays on `ghcr.io` can leave it out. `github-token` is the
+other way round: needed for every host that is not `*.pkg.dev`.
 
 ## Glob Pattern Reference
 
