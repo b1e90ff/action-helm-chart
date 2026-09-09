@@ -131,9 +131,11 @@ credential helper, for which the action needs a key:
     gcp-credentials-json: ${{ secrets.GCP_SA_KEY }}
 ```
 
-The key is read only when a publish target or a chart dependency actually lives on
-`*.pkg.dev`, so a repository that stays on `ghcr.io` can leave it out. `github-token` is the
-other way round: needed for every host that is not `*.pkg.dev`.
+The key is needed when a publish target or a chart dependency lives on `*.pkg.dev`, so a
+repository that stays on `ghcr.io` can leave it out. `github-token` is the other way round:
+needed for every host that is not `*.pkg.dev`. Pushing charts requires an account with write
+access to the target repository — on Artifact Registry a virtual repository never accepts a
+push, so the target has to be a standard one.
 
 ## Glob Pattern Reference
 
